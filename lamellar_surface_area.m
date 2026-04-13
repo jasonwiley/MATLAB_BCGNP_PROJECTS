@@ -1,0 +1,78 @@
+% -----------------------------
+% Define your plane
+% -----------------------------
+clear all;
+close all;
+%if you have a gsd file, you can use uncomment and use the functioin below
+%to extract your frame(s).
+%system=Extract_GSD('SPRING_ONLY_X_TO_Y_LxLyLz_Make_PCNDNano118_r2_N18NA9_nG110_VISUALIZATION.gsd','steps',1);
+system=load('system.mat');  %example to see how code works
+
+%Specifiy total length of polymer arm
+arm_length=18;
+%This specifies L assuming half beads are C and half are D
+L=arm_length/2;
+%Specify along which dimension the lamlellae are oriented
+dimension_alignment = 'X';
+D_ind=find(system.attype=='D');
+C_ind=find(system.attype=='C');
+D_interface=system.pos(D_ind(1:L:end-L),:);
+%Choose which lamellae interface to measure, look at plot and decide
+plot_flag=0;
+upper_bound = -10;
+lower_bound = -15;
+if plot_flag==0
+    D_lam_ind=D_interface(:,1)>lower_bound & D_interface(:,1)<upper_bound;
+    D_lam_pos=D_interface(D_lam_ind,:);
+    % D_pos = D_xyz(D_xyz(:,3) > 9.5, :);
+    figure()
+    scatter3(D_lam_pos(:,1),D_lam_pos(:,2),D_lam_pos(:,3),'filled','b')
+    xlabel('x')
+    ylabel('y')
+    zlabel('z')
+    xlim([-system.dim(1)/2 system.dim(1)/2])
+    ylim([-system.dim(2)/2 system.dim(2)/2])
+    zlim([-system.dim(3)/2 system.dim(3)/2])
+elseif plot_flag==1
+    D_lam_pos=D_interface;
+    figure()
+    scatter3(D_lam_pos(:,1),D_lam_pos(:,2),D_lam_pos(:,3),'filled','b')
+    xlabel('x')
+    ylabel('y')
+    zlabel('z')
+    xlim([-system.dim(1)/2 system.dim(1)/2])
+    ylim([-system.dim(2)/2 system.dim(2)/2])
+    zlim([-system.dim(3)/2 system.dim(3)/2])
+end
+D = D_lam_pos;
+
+x = D(:,1);
+y = D(:,2);
+z = D(:,3);
+if dimension_alignment == 'X'
+    % Delaunay triangulation in XY plane
+    tri = delaunay(y, z);
+    area_of_plane = system.dim(2)*system.dim(3);
+elseif dimension_alignment == 'Y'
+    tri = delaunay(x,z);
+    area_of_plane = system.dim(1)*system.dim(3);
+elseif dimension_alignment=='Z'
+    tri = delaunay(x,y);
+    area_of_plane = system.dim(1)*system.dim(2);
+else
+    disp('Dimension not properly specified')
+end
+
+
+A = 0;
+
+for i = 1:size(tri,1)
+    p1 = D(tri(i,1),:);
+    p2 = D(tri(i,2),:);
+    p3 = D(tri(i,3),:);
+
+    A = A + 0.5 * norm(cross(p2 - p1, p3 - p1));
+end
+%produce copy and paste results for spreadsheet if desired
+fprintf('%-30s%-30s%-30s\n', 'Area of rough surface', 'Area of smooth surface', 'Ratio Rough/Smooth');
+fprintf('%-30.4f%-30.4f%-30.4f\n', A, area_of_plane, A/area_of_plane);
